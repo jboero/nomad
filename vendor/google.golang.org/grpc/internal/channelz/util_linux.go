@@ -1,3 +1,5 @@
+// +build linux,!appengine
+
 /*
  *
  * Copyright 2018 gRPC authors.
@@ -16,20 +18,22 @@
  *
  */
 
-// Package envconfig contains grpc settings configured by environment variables.
-package envconfig
+package channelz
 
 import (
-	"os"
-	"strings"
+	"syscall"
 )
 
-const (
-	prefix   = "GRPC_GO_"
-	retryStr = prefix + "RETRY"
-)
-
-var (
-	// Retry is set if retry is explicitly enabled via "GRPC_GO_RETRY=on".
-	Retry = strings.EqualFold(os.Getenv(retryStr), "on")
-)
+// GetSocketOption gets the socket option info of the conn.
+func GetSocketOption(socket interface{}) *SocketOptionData {
+	c, ok := socket.(syscall.Conn)
+	if !ok {
+		return nil
+	}
+	data := &SocketOptionData{}
+	if rawConn, err := c.SyscallConn(); err == nil {
+		rawConn.Control(data.Getsockopt)
+		return data
+	}
+	return nil
+}
